@@ -15,7 +15,7 @@ struct CoffeeTeaApp: App {
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            BeverageRecord.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -27,7 +27,10 @@ struct CoffeeTeaApp: App {
     }()
 
     var body: some Scene {
-        WindowGroup {}
+        // 使用 Settings 场景替代 WindowGroup
+        Settings {
+            EmptyView()
+        }
         .modelContainer(sharedModelContainer)
     }
 }
