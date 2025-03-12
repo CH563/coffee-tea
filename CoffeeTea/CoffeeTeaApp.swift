@@ -10,6 +10,9 @@ import SwiftData
 
 @main
 struct CoffeeTeaApp: App {
+    // 菜单栏常驻配置
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
@@ -24,9 +27,7 @@ struct CoffeeTeaApp: App {
     }()
 
     var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+        WindowGroup {}
         .modelContainer(sharedModelContainer)
     }
 }
