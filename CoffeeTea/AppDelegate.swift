@@ -59,8 +59,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func setupPopover() {
         // 配置弹出窗
-        popover.contentSize = NSSize(width: 300, height: 400)
+        popover.contentSize = NSSize(width: 280, height: 400)
         popover.behavior = .transient
+        
+        // 设置背景色 - 修复错误
+        popover.appearance = NSAppearance(named: .aqua) // 使用系统默认外观
         
         // 创建 SwiftUI 视图并传入 ModelContext
         let contentView = PopoverContentView()
@@ -109,10 +112,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func showContextMenu() {
         let menu = NSMenu()
         
-        menu.addItem(NSMenuItem(title: "快速记录咖啡", action: #selector(quickAddCoffee), keyEquivalent: "c"))
-        menu.addItem(NSMenuItem(title: "快速记录奶茶", action: #selector(quickAddTea), keyEquivalent: "t"))
+        menu.addItem(NSMenuItem(title: "快速记录咖啡", action: #selector(quickAddCoffee), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "快速记录奶茶", action: #selector(quickAddTea), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "打开日历", action: #selector(togglePopover), keyEquivalent: "o"))
+        menu.addItem(NSMenuItem(title: "今日消费", action: #selector(showTodayConsumptionFromMenu), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         
@@ -123,6 +126,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.async {
             self.statusBarItem.menu = nil
         }
+    }
+    
+    @objc func showTodayConsumptionFromMenu() {
+        showTodayConsumption()
     }
     
     private func showTodayConsumption() {
