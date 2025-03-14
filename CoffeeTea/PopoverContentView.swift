@@ -19,6 +19,10 @@ struct PopoverContentView: View {
     @State private var showingDateDetail = false
     @State private var detailDate: Date?
 
+    var isFutureDate: Bool {
+        return selectedDate > Date()
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // 快速记录按钮
@@ -135,6 +139,7 @@ struct ItsycalStyleCalendarView: View {
                     Image(systemName: "chevron.right")
                         .foregroundColor(.gray)
                 }
+                .disabled(!canMoveToNextMonth())
             }
             .padding(.horizontal)
 
@@ -261,6 +266,18 @@ struct ItsycalStyleCalendarView: View {
             currentMonth = newDate
         }
     }
+
+    private func canMoveToNextMonth() -> Bool {
+        let currentDate = Date()
+        let currentMonthValue = calendar.component(.month, from: currentDate)
+        let currentYearValue = calendar.component(.year, from: currentDate)
+        
+        let displayedMonthValue = calendar.component(.month, from: self.currentMonth)
+        let displayedYearValue = calendar.component(.year, from: self.currentMonth)
+        
+        // 如果显示的年份大于当前年份，或者年份相同但月份大于等于当前月份，则不能前进
+        return !(displayedYearValue > currentYearValue || (displayedYearValue == currentYearValue && displayedMonthValue >= currentMonthValue))
+    }
 }
 
 struct DateCell: View {
@@ -272,53 +289,62 @@ struct DateCell: View {
     let onLongPress: () -> Void
 
     private let calendar = Calendar.current
-    private let cellSize: CGFloat = 28
+    private let cellSize: CGFloat = 20
+    private var isFutureDate: Bool {
+        return date > Date()
+    }
+
+    init(date: Date, isSelected: Bool, isToday: Bool, records: [BeverageRecord], onTap: @escaping () -> Void, onLongPress: @escaping () -> Void) {
+        self.date = date
+        self.isSelected = isSelected
+        self.isToday = isToday
+        self.records = records
+        self.onTap = onTap
+        self.onLongPress = onLongPress
+    }
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 0) {
             // 日期数字
             Text("\(calendar.component(.day, from: date))")
                 .font(.system(size: 12))
                 .fontWeight(isToday ? .bold : .regular)
-                .foregroundColor(textColor)
+                .foregroundColor(isFutureDate ? .gray.opacity(0.3) : textColor)
                 .frame(width: cellSize, height: cellSize)
-                .background(
-                    Circle()
-                        .fill(backgroundColor)
-                        .opacity(isSelected || isToday ? 1 : 0)
-                )
-
+            
             // 饮品指示器
             HStack(spacing: 2) {
-                if records.count > 0 {
-                    if records.count > 2 {
-                        Text(records[0].emoji)
-                            .font(.system(size: 12))
-                        Text("+\(records.count - 1)")
-                            .font(.system(size: 6))
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(0..<min(records.count, 2), id: \.self) {
-                            index in
-                            Text(records[index].emoji)
-                                .font(.system(size: 12))
-                        }
+                if records.count > 0 && !isFutureDate {
+                    // 只显示不同种类的emoji，不显示数量
+                    let uniqueEmojis = Array(Set(records.map { $0.emoji }))
+                    ForEach(0..<min(uniqueEmojis.count, 3), id: \.self) { index in
+                        Text(uniqueEmojis[index])
+                            .font(.system(size: 10))
                     }
                 } else {
                     Text("")
-                        .font(.system(size: 12))
+                        .font(.system(size: 10))
                 }
             }
-            .padding(.horizontal, 2)
-            .padding(.vertical, 1)
+            .padding(.top, -2)
+            .padding(.bottom, 1)
         }
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(backgroundColor)
+                .opacity((isSelected || isToday) && !isFutureDate ? 1 : 0)
+        )
         .onTapGesture {
-            onTap()
+            if !isFutureDate {
+                onTap()
+            }
         }
         .onLongPressGesture {
-            onLongPress()
+            if !isFutureDate {
+                onLongPress()
+            }
         }
     }
 
@@ -346,12 +372,16 @@ struct DateCell: View {
 struct DateDetailView: View {
     let date: Date
     let records: [BeverageRecord]
+    @Environment(\.modelContext) private var modelContext
 
     // 每行最多显示的记录数
     private let maxDisplayCount = 8
+    
+    @State private var showingDeleteConfirmation = false
+    @State private var recordToDelete: BeverageRecord?
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 0) {
             // 修改标题显示：周几 + 咖啡数量 + 奶茶数量
             Text(simplifiedSummary)
                 .font(.headline)
@@ -377,6 +407,10 @@ struct DateDetailView: View {
                         )
                         .font(.system(size: 16))
                         .help(timeString(from: record.timestamp))
+                        .onTapGesture {
+                            recordToDelete = record
+                            showingDeleteConfirmation = true
+                        }
                     }
 
                     // 显示剩余数量
@@ -392,6 +426,20 @@ struct DateDetailView: View {
             Spacer()
         }
         .padding(.top, 0)
+        .confirmationDialog("确定要删除这条记录吗？", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
+            Button("删除", role: .destructive) {
+                if let record = recordToDelete {
+                    deleteRecord(record)
+                }
+            }
+            Button("取消", role: .cancel) {}
+        }
+    }
+    
+    private func deleteRecord(_ record: BeverageRecord) {
+        modelContext.delete(record)
+        NotificationCenter.default.post(
+            name: Notification.Name("DrinkRemoved"), object: nil)
     }
 
     // 简化的摘要信息：周几 + 咖啡数量 + 奶茶数量
