@@ -28,10 +28,10 @@ struct PopoverContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // 顶部标题栏
+            // 顶部标题栏 - 更紧凑
             HStack {
                 Text("饮品记录")
-                    .font(.headline)
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.primary)
                 Spacer()
                 Button(action: {
@@ -40,17 +40,18 @@ struct PopoverContentView: View {
                     currentMonth = Date()
                 }) {
                     Label("今天", systemImage: "calendar")
-                        .font(.subheadline)
+                        .font(.system(size: 12))
                         .foregroundColor(.blue)
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal)
-            .padding(.top, 12)
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
             
-            Divider().padding(.vertical, 8)
+            Divider().padding(.vertical, 0)
             
-            // 日历视图
+            // 日历视图 - 更紧凑
             ItsycalStyleCalendarView(
                 currentMonth: $currentMonth,
                 selectedDate: $selectedDate,
@@ -60,22 +61,23 @@ struct PopoverContentView: View {
                     showingDateDetail = true
                 }
             )
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 6)
             
-            Divider().padding(.vertical, 8)
+            Divider().padding(.vertical, 0)
             
-            // 日期详情视图
+            // 日期详情视图 - 更紧凑
             DateDetailView(
                 date: selectedDate, 
                 records: recordsForDate(selectedDate)
             )
             .padding(.horizontal, 8)
-            .padding(.bottom, 8)
+            .padding(.vertical, 6)
             
             Divider()
             
-            // 底部快速添加按钮
-            HStack(spacing: 20) {
+            // 底部快速添加按钮 - 更紧凑
+            HStack(spacing: 16) {
                 Spacer()
                 
                 Button(action: { 
@@ -92,20 +94,20 @@ struct PopoverContentView: View {
                         }
                     }
                 }) {
-                    VStack {
+                    VStack(spacing: 2) {
                         Image(systemName: "cup.and.saucer.fill")
-                            .font(.system(size: 24))
+                            .font(.system(size: 20))
                             .foregroundColor(.brown)
                         Text("咖啡")
-                            .font(.caption)
+                            .font(.system(size: 10))
                             .foregroundColor(.primary)
                     }
-                    .frame(width: 70, height: 60)
+                    .frame(width: 60, height: 50)
                     .background(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: 8)
                             .fill(Color.brown.opacity(0.1))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12)
+                                RoundedRectangle(cornerRadius: 8)
                                     .stroke(Color.brown.opacity(0.3), lineWidth: 1)
                             )
                     )
@@ -136,20 +138,20 @@ struct PopoverContentView: View {
                         }
                     }
                 }) {
-                    VStack {
+                    VStack(spacing: 2) {
                         Image(systemName: "mug.fill")
-                            .font(.system(size: 24))
+                            .font(.system(size: 20))
                             .foregroundColor(.purple)
                         Text("奶茶")
-                            .font(.caption)
+                            .font(.system(size: 10))
                             .foregroundColor(.primary)
                     }
-                    .frame(width: 70, height: 60)
+                    .frame(width: 60, height: 50)
                     .background(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: 8)
                             .fill(Color.purple.opacity(0.1))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12)
+                                RoundedRectangle(cornerRadius: 8)
                                     .stroke(Color.purple.opacity(0.3), lineWidth: 1)
                             )
                     )
@@ -168,10 +170,10 @@ struct PopoverContentView: View {
                 
                 Spacer()
             }
-            .padding(.vertical, 12)
+            .padding(.vertical, 8)
             .background(Color(nsColor: .windowBackgroundColor))
         }
-        .frame(width: 320)
+        .frame(width: 280) // 减小整体宽度
         .background(Color(.textBackgroundColor))
         .sheet(isPresented: $showingCustomQuantityInput) {
             CustomQuantityView(
@@ -227,17 +229,17 @@ struct ItsycalStyleCalendarView: View {
     private let calendar = Calendar.current
     private let weekdaySymbols = Calendar.current.veryShortWeekdaySymbols
     private let daysInWeek = 7
-    private let rowHeight: CGFloat = 32
+    private let rowHeight: CGFloat = 28 // 减小行高
 
     var body: some View {
-        VStack(spacing: 8) {
-            // 月份导航
+        VStack(spacing: 4) { // 减小间距
+            // 月份导航 - 更紧凑
             HStack {
                 Button(action: previousMonth) {
                     Image(systemName: "chevron.left")
                         .foregroundColor(.blue)
-                        .font(.system(size: 14, weight: .semibold))
-                        .padding(6)
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(4)
                         .background(Color.blue.opacity(0.1))
                         .clipShape(Circle())
                 }
@@ -245,7 +247,7 @@ struct ItsycalStyleCalendarView: View {
                 Spacer()
 
                 Text(monthYearString(from: currentMonth))
-                    .font(.headline)
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.primary)
 
                 Spacer()
@@ -253,29 +255,29 @@ struct ItsycalStyleCalendarView: View {
                 Button(action: nextMonth) {
                     Image(systemName: "chevron.right")
                         .foregroundColor(canMoveToNextMonth() ? .blue : .gray)
-                        .font(.system(size: 14, weight: .semibold))
-                        .padding(6)
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(4)
                         .background(canMoveToNextMonth() ? Color.blue.opacity(0.1) : Color.gray.opacity(0.1))
                         .clipShape(Circle())
                 }
                 .disabled(!canMoveToNextMonth())
             }
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 6)
 
-            // 星期标题
+            // 星期标题 - 更紧凑
             HStack(spacing: 0) {
                 ForEach(getAdjustedWeekdaySymbols(), id: \.self) { symbol in
                     Text(symbol)
-                        .font(.caption)
+                        .font(.system(size: 10))
                         .fontWeight(.medium)
                         .frame(maxWidth: .infinity)
                         .foregroundColor(.secondary)
                 }
             }
-            .padding(.top, 4)
+            .padding(.top, 2)
 
-            // 日期网格
-            VStack(spacing: 4) {
+            // 日期网格 - 更紧凑
+            VStack(spacing: 2) {
                 ForEach(monthDays(), id: \.self) { week in
                     HStack(spacing: 0) {
                         ForEach(week, id: \.self) { day in
@@ -412,16 +414,16 @@ struct DateCell: View {
     let onLongPress: () -> Void
 
     private let calendar = Calendar.current
-    private let cellSize: CGFloat = 24
+    private let cellSize: CGFloat = 22 // 减小单元格尺寸
     private var isFutureDate: Bool {
         return date > Date()
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            // 日期数字
+            // 日期数字 - 更紧凑
             Text("\(calendar.component(.day, from: date))")
-                .font(.system(size: 14))
+                .font(.system(size: 12))
                 .fontWeight(isToday || isSelected ? .bold : .regular)
                 .foregroundColor(textColor)
                 .frame(width: cellSize, height: cellSize)
@@ -431,27 +433,27 @@ struct DateCell: View {
                         .opacity(isSelected || isToday ? 1 : 0)
                 )
             
-            // 饮品指示器 - 改为彩色圆点
+            // 饮品指示器 - 彩色圆点
             if records.count > 0 && !isFutureDate {
-                HStack(spacing: 4) {
+                HStack(spacing: 3) {
                     // 检查是否有咖啡
                     if records.contains(where: { $0.beverageType == .coffee }) {
                         Circle()
                             .fill(Color.brown)
-                            .frame(width: 5, height: 5)
+                            .frame(width: 4, height: 4)
                     }
                     
                     // 检查是否有奶茶
                     if records.contains(where: { $0.beverageType == .tea }) {
                         Circle()
                             .fill(Color.purple)
-                            .frame(width: 5, height: 5)
+                            .frame(width: 4, height: 4)
                     }
                 }
-                .padding(.top, 2)
+                .padding(.top, 1)
             } else {
                 Spacer()
-                    .frame(height: 7) // 保持一致的高度
+                    .frame(height: 5) // 保持一致的高度
             }
         }
         .frame(maxWidth: .infinity)
@@ -501,23 +503,23 @@ struct DateDetailView: View {
     @State private var deleteScale: CGFloat = 1.0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // 标题显示
+        VStack(alignment: .leading, spacing: 6) { // 减小间距
+            // 标题显示 - 更紧凑
             HStack {
                 Text(dateString(from: date))
-                    .font(.headline)
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.primary)
                 
                 Spacer()
                 
                 if !records.isEmpty {
                     Text("\(records.count) 杯")
-                        .font(.subheadline)
+                        .font(.system(size: 11))
                         .foregroundColor(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
                         .background(Color.secondary.opacity(0.1))
-                        .cornerRadius(8)
+                        .cornerRadius(6)
                 }
             }
 
@@ -525,38 +527,39 @@ struct DateDetailView: View {
                 HStack {
                     Spacer()
                     Text("今日暂无记录")
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 8)
                     Spacer()
                 }
             } else {
-                // 记录列表
+                // 记录列表 - 更紧凑
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
+                    HStack(spacing: 8) {
                         ForEach(records.sorted(by: { $0.timestamp > $1.timestamp }), id: \.id) { record in
-                            VStack(spacing: 4) {
+                            VStack(spacing: 2) {
                                 Text(record.emoji)
-                                    .font(.system(size: 24))
+                                    .font(.system(size: 20))
                                 
                                 if record.quantity > 1 {
                                     Text("x\(record.quantity)")
-                                        .font(.caption)
+                                        .font(.system(size: 9))
                                         .foregroundColor(.secondary)
                                 }
                                 
                                 Text(timeString(from: record.timestamp))
-                                    .font(.caption2)
+                                    .font(.system(size: 9))
                                     .foregroundColor(.secondary)
                             }
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 8)
                             .background(
-                                RoundedRectangle(cornerRadius: 10)
+                                RoundedRectangle(cornerRadius: 8)
                                     .fill(record.beverageType == .coffee ? 
                                           Color.brown.opacity(0.1) : 
                                           Color.purple.opacity(0.1))
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 10)
+                                        RoundedRectangle(cornerRadius: 8)
                                             .stroke(record.beverageType == .coffee ? 
                                                    Color.brown.opacity(0.3) : 
                                                    Color.purple.opacity(0.3), 
@@ -570,11 +573,12 @@ struct DateDetailView: View {
                             }
                         }
                     }
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 2)
                 }
+                .frame(height: 50) // 固定高度，更紧凑
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
         .confirmationDialog("确定要删除这条记录吗？", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
             Button("删除", role: .destructive) {
                 if let record = recordToDelete {
@@ -601,7 +605,7 @@ struct DateDetailView: View {
     private func dateString(from date: Date) -> String {
         let weekday = weekdayString(from: date)
         let formatter = DateFormatter()
-        formatter.dateFormat = "MM月dd日"
+        formatter.dateFormat = "MM/dd"  // 更紧凑的日期格式
         let dateStr = formatter.string(from: date)
         return "\(dateStr) \(weekday)"
     }
@@ -640,13 +644,13 @@ struct CustomQuantityView: View {
     }
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) { // 减小间距
             Text("\(beverageEmoji) 添加\(beverageName)")
-                .font(.headline)
-                .padding(.top, 20)
+                .font(.system(size: 14, weight: .medium))
+                .padding(.top, 16)
 
             Text("请选择数量")
-                .font(.subheadline)
+                .font(.system(size: 12))
                 .foregroundColor(.secondary)
             
             HStack {
@@ -656,13 +660,13 @@ struct CustomQuantityView: View {
                     }
                 }) {
                     Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 28))
+                        .font(.system(size: 24))
                         .foregroundColor(quantity > 1 ? beverageColor : .gray)
                 }
                 
                 Text("\(quantity)")
-                    .font(.system(size: 36, weight: .bold))
-                    .frame(width: 60)
+                    .font(.system(size: 30, weight: .bold))
+                    .frame(width: 50)
                 
                 Button(action: {
                     if quantity < 10 {
@@ -670,36 +674,36 @@ struct CustomQuantityView: View {
                     }
                 }) {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 28))
+                        .font(.system(size: 24))
                         .foregroundColor(quantity < 10 ? beverageColor : .gray)
                 }
             }
-            .padding()
+            .padding(.vertical, 8)
             
-            HStack(spacing: 20) {
+            HStack(spacing: 16) {
                 Button("取消") {
                     onCancel()
                 }
                 .foregroundColor(.secondary)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
                 .background(Color.secondary.opacity(0.1))
-                .cornerRadius(10)
+                .cornerRadius(8)
                 
                 Button("添加") {
                     onSave()
                 }
                 .foregroundColor(.white)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
                 .background(beverageColor)
-                .cornerRadius(10)
+                .cornerRadius(8)
             }
-            .padding(.bottom, 20)
+            .padding(.bottom, 16)
         }
-        .frame(width: 250)
+        .frame(width: 220) // 减小宽度
         .background(Color(.windowBackgroundColor))
-        .cornerRadius(16)
-        .shadow(radius: 10)
+        .cornerRadius(12)
+        .shadow(radius: 8)
     }
 }
