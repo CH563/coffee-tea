@@ -7,6 +7,7 @@
 
 import SwiftData
 import SwiftUI
+import AppKit
 
 struct PopoverContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -18,6 +19,8 @@ struct PopoverContentView: View {
     @State private var showingCustomQuantityInput = false
     @State private var showingDateDetail = false
     @State private var detailDate: Date?
+    @State private var addedAnimation: Bool = false
+    @State private var selectedBeverageType: BeverageType?
 
     var isFutureDate: Bool {
         return selectedDate > Date()
@@ -25,39 +28,29 @@ struct PopoverContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // 快速记录按钮
-            HStack(spacing: 20) {
-                Button(action: { addRecord(type: .coffee) }) {
-                    VStack {
-                        Text("☕️").font(.system(size: 24))
-                        // Text("咖啡").font(.caption)
-                    }
-                    .frame(width: 60, height: 60)
+            // 顶部标题栏
+            HStack {
+                Text("饮品记录")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Spacer()
+                Button(action: {
+                    // 重置为今天
+                    selectedDate = Date()
+                    currentMonth = Date()
+                }) {
+                    Label("今天", systemImage: "calendar")
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
                 }
                 .buttonStyle(.plain)
-                .contentShape(Rectangle())
-                .onLongPressGesture {
-                    showingCustomQuantityInput = true
-                }
-
-                Button(action: { addRecord(type: .tea) }) {
-                    VStack {
-                        Text("🧋").font(.system(size: 24))
-                        // Text("奶茶").font(.caption)
-                    }
-                    .frame(width: 60, height: 60)
-                }
-                .buttonStyle(.plain)
-                .contentShape(Rectangle())
-                .onLongPressGesture {
-                    showingCustomQuantityInput = true
-                }
             }
-            .padding(.top, 10)
-
-            Divider().padding(.vertical, 10)
-
-            // 日历视图 - Itsycal 风格
+            .padding(.horizontal)
+            .padding(.top, 12)
+            
+            Divider().padding(.vertical, 8)
+            
+            // 日历视图
             ItsycalStyleCalendarView(
                 currentMonth: $currentMonth,
                 selectedDate: $selectedDate,
@@ -67,30 +60,147 @@ struct PopoverContentView: View {
                     showingDateDetail = true
                 }
             )
-            .padding(.top, 5)
-
-            Divider().padding(.vertical, 10)
-
+            .padding(.horizontal, 8)
+            
+            Divider().padding(.vertical, 8)
+            
+            // 日期详情视图
             DateDetailView(
-                date: selectedDate, records: recordsForDate(selectedDate))
+                date: selectedDate, 
+                records: recordsForDate(selectedDate)
+            )
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
+            
+            Divider()
+            
+            // 底部快速添加按钮
+            HStack(spacing: 20) {
+                Spacer()
+                
+                Button(action: { 
+                    withAnimation {
+                        selectedBeverageType = .coffee
+                        addedAnimation = true
+                    }
+                    addRecord(type: .coffee)
+                    
+                    // 重置动画状态
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation {
+                            addedAnimation = false
+                        }
+                    }
+                }) {
+                    VStack {
+                        Image(systemName: "cup.and.saucer.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.brown)
+                        Text("咖啡")
+                            .font(.caption)
+                            .foregroundColor(.primary)
+                    }
+                    .frame(width: 70, height: 60)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.brown.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.brown.opacity(0.3), lineWidth: 1)
+                            )
+                    )
+                    .scaleEffect(selectedBeverageType == .coffee && addedAnimation ? 1.1 : 1.0)
+                }
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .disabled(isFutureDate)
+                .opacity(isFutureDate ? 0.5 : 1.0)
+                .onLongPressGesture {
+                    if !isFutureDate {
+                        selectedBeverageType = .coffee
+                        showingCustomQuantityInput = true
+                    }
+                }
+
+                Button(action: { 
+                    withAnimation {
+                        selectedBeverageType = .tea
+                        addedAnimation = true
+                    }
+                    addRecord(type: .tea)
+                    
+                    // 重置动画状态
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation {
+                            addedAnimation = false
+                        }
+                    }
+                }) {
+                    VStack {
+                        Image(systemName: "mug.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.purple)
+                        Text("奶茶")
+                            .font(.caption)
+                            .foregroundColor(.primary)
+                    }
+                    .frame(width: 70, height: 60)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.purple.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.purple.opacity(0.3), lineWidth: 1)
+                            )
+                    )
+                    .scaleEffect(selectedBeverageType == .tea && addedAnimation ? 1.1 : 1.0)
+                }
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .disabled(isFutureDate)
+                .opacity(isFutureDate ? 0.5 : 1.0)
+                .onLongPressGesture {
+                    if !isFutureDate {
+                        selectedBeverageType = .tea
+                        showingCustomQuantityInput = true
+                    }
+                }
+                
+                Spacer()
+            }
+            .padding(.vertical, 12)
+            .background(Color(nsColor: .windowBackgroundColor))
         }
-        .frame(width: 300)
+        .frame(width: 320)
+        .background(Color(.textBackgroundColor))
         .sheet(isPresented: $showingCustomQuantityInput) {
             CustomQuantityView(
                 quantity: $customQuantity,
+                beverageType: selectedBeverageType ?? .coffee,
                 onSave: {
+                    if let type = selectedBeverageType {
+                        addRecord(type: type, quantity: customQuantity)
+                    }
                     showingCustomQuantityInput = false
-                })
+                    customQuantity = 1
+                },
+                onCancel: {
+                    showingCustomQuantityInput = false
+                    customQuantity = 1
+                }
+            )
         }
         .sheet(isPresented: $showingDateDetail) {
             if let date = detailDate {
                 DateDetailView(date: date, records: recordsForDate(date))
+                    .presentationDetents([.medium])
             }
         }
+        .animation(.spring(response: 0.3), value: selectedDate)
     }
 
-    private func addRecord(type: BeverageType) {
-        let newRecord = BeverageRecord(timestamp: selectedDate, type: type)
+    private func addRecord(type: BeverageType, quantity: Int = 1) {
+        let newRecord = BeverageRecord(timestamp: selectedDate, type: type, quantity: quantity)
         modelContext.insert(newRecord)
 
         NotificationCenter.default.post(
@@ -117,7 +227,7 @@ struct ItsycalStyleCalendarView: View {
     private let calendar = Calendar.current
     private let weekdaySymbols = Calendar.current.veryShortWeekdaySymbols
     private let daysInWeek = 7
-    private let rowHeight: CGFloat = 30
+    private let rowHeight: CGFloat = 32
 
     var body: some View {
         VStack(spacing: 8) {
@@ -125,36 +235,47 @@ struct ItsycalStyleCalendarView: View {
             HStack {
                 Button(action: previousMonth) {
                     Image(systemName: "chevron.left")
-                        .foregroundColor(.gray)
+                        .foregroundColor(.blue)
+                        .font(.system(size: 14, weight: .semibold))
+                        .padding(6)
+                        .background(Color.blue.opacity(0.1))
+                        .clipShape(Circle())
                 }
 
                 Spacer()
 
                 Text(monthYearString(from: currentMonth))
                     .font(.headline)
+                    .foregroundColor(.primary)
 
                 Spacer()
 
                 Button(action: nextMonth) {
                     Image(systemName: "chevron.right")
-                        .foregroundColor(.gray)
+                        .foregroundColor(canMoveToNextMonth() ? .blue : .gray)
+                        .font(.system(size: 14, weight: .semibold))
+                        .padding(6)
+                        .background(canMoveToNextMonth() ? Color.blue.opacity(0.1) : Color.gray.opacity(0.1))
+                        .clipShape(Circle())
                 }
                 .disabled(!canMoveToNextMonth())
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 8)
 
             // 星期标题
             HStack(spacing: 0) {
                 ForEach(getAdjustedWeekdaySymbols(), id: \.self) { symbol in
                     Text(symbol)
                         .font(.caption)
+                        .fontWeight(.medium)
                         .frame(maxWidth: .infinity)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.secondary)
                 }
             }
+            .padding(.top, 4)
 
             // 日期网格
-            VStack(spacing: 2) {
+            VStack(spacing: 4) {
                 ForEach(monthDays(), id: \.self) { week in
                     HStack(spacing: 0) {
                         ForEach(week, id: \.self) { day in
@@ -166,7 +287,9 @@ struct ItsycalStyleCalendarView: View {
                                     isToday: calendar.isDateInToday(date),
                                     records: recordsForDate(date),
                                     onTap: {
-                                        selectedDate = date
+                                        withAnimation(.spring(response: 0.3)) {
+                                            selectedDate = date
+                                        }
                                     },
                                     onLongPress: {
                                         onDateLongPress(date)
@@ -241,16 +364,6 @@ struct ItsycalStyleCalendarView: View {
         }
     }
 
-    // 获取指定日期的记录
-    private func recordsForDate(_ date: Date) -> [BeverageRecord] {
-        let startOfDay = calendar.startOfDay(for: date)
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-
-        return beverageRecords.filter { record in
-            record.timestamp >= startOfDay && record.timestamp < endOfDay
-        }
-    }
-
     private func previousMonth() {
         if let newDate = calendar.date(
             byAdding: .month, value: -1, to: currentMonth)
@@ -278,6 +391,16 @@ struct ItsycalStyleCalendarView: View {
         // 如果显示的年份大于当前年份，或者年份相同但月份大于等于当前月份，则不能前进
         return !(displayedYearValue > currentYearValue || (displayedYearValue == currentYearValue && displayedMonthValue >= currentMonthValue))
     }
+
+    // 获取指定日期的记录
+    private func recordsForDate(_ date: Date) -> [BeverageRecord] {
+        let startOfDay = calendar.startOfDay(for: date)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+
+        return beverageRecords.filter { record in
+            record.timestamp >= startOfDay && record.timestamp < endOfDay
+        }
+    }
 }
 
 struct DateCell: View {
@@ -289,53 +412,51 @@ struct DateCell: View {
     let onLongPress: () -> Void
 
     private let calendar = Calendar.current
-    private let cellSize: CGFloat = 20
+    private let cellSize: CGFloat = 24
     private var isFutureDate: Bool {
         return date > Date()
-    }
-
-    init(date: Date, isSelected: Bool, isToday: Bool, records: [BeverageRecord], onTap: @escaping () -> Void, onLongPress: @escaping () -> Void) {
-        self.date = date
-        self.isSelected = isSelected
-        self.isToday = isToday
-        self.records = records
-        self.onTap = onTap
-        self.onLongPress = onLongPress
     }
 
     var body: some View {
         VStack(spacing: 0) {
             // 日期数字
             Text("\(calendar.component(.day, from: date))")
-                .font(.system(size: 12))
-                .fontWeight(isToday ? .bold : .regular)
-                .foregroundColor(isFutureDate ? .gray.opacity(0.3) : textColor)
+                .font(.system(size: 14))
+                .fontWeight(isToday || isSelected ? .bold : .regular)
+                .foregroundColor(textColor)
                 .frame(width: cellSize, height: cellSize)
+                .background(
+                    Circle()
+                        .fill(backgroundColor)
+                        .opacity(isSelected || isToday ? 1 : 0)
+                )
             
-            // 饮品指示器
-            HStack(spacing: 2) {
-                if records.count > 0 && !isFutureDate {
-                    // 只显示不同种类的emoji，不显示数量
-                    let uniqueEmojis = Array(Set(records.map { $0.emoji }))
-                    ForEach(0..<min(uniqueEmojis.count, 3), id: \.self) { index in
-                        Text(uniqueEmojis[index])
-                            .font(.system(size: 10))
+            // 饮品指示器 - 改为彩色圆点
+            if records.count > 0 && !isFutureDate {
+                HStack(spacing: 4) {
+                    // 检查是否有咖啡
+                    if records.contains(where: { $0.beverageType == .coffee }) {
+                        Circle()
+                            .fill(Color.brown)
+                            .frame(width: 5, height: 5)
                     }
-                } else {
-                    Text("")
-                        .font(.system(size: 10))
+                    
+                    // 检查是否有奶茶
+                    if records.contains(where: { $0.beverageType == .tea }) {
+                        Circle()
+                            .fill(Color.purple)
+                            .frame(width: 5, height: 5)
+                    }
                 }
+                .padding(.top, 2)
+            } else {
+                Spacer()
+                    .frame(height: 7) // 保持一致的高度
             }
-            .padding(.top, -2)
-            .padding(.bottom, 1)
         }
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(backgroundColor)
-                .opacity((isSelected || isToday) && !isFutureDate ? 1 : 0)
-        )
+        .opacity(isFutureDate ? 0.4 : 1.0)
         .onTapGesture {
             if !isFutureDate {
                 onTap()
@@ -349,7 +470,9 @@ struct DateCell: View {
     }
 
     private var textColor: Color {
-        if isSelected {
+        if isFutureDate {
+            return .gray
+        } else if isSelected {
             return .white
         } else if isToday {
             return .white
@@ -373,63 +496,96 @@ struct DateDetailView: View {
     let date: Date
     let records: [BeverageRecord]
     @Environment(\.modelContext) private var modelContext
-
-    // 每行最多显示的记录数
-    private let maxDisplayCount = 8
-    
     @State private var showingDeleteConfirmation = false
     @State private var recordToDelete: BeverageRecord?
+    @State private var deleteScale: CGFloat = 1.0
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 修改标题显示：周几 + 咖啡数量 + 奶茶数量
-            Text(simplifiedSummary)
-                .font(.headline)
-                .padding(.bottom, 5)
-
-            if records.isEmpty {
-                Text("没有记录")
-                    .foregroundColor(.secondary)
-            } else {
-                // 横向排列记录
-                HStack(spacing: 8) {
-                    ForEach(0..<min(records.count, maxDisplayCount), id: \.self)
-                    { index in
-                        let record = records.sorted(by: {
-                            $0.timestamp < $1.timestamp
-                        })[index]
-
-                        // 使用 tooltip 显示时间
-                        Text(
-                            record.emoji
-                                + (record.quantity > 1
-                                    ? " x\(record.quantity)" : "")
-                        )
-                        .font(.system(size: 16))
-                        .help(timeString(from: record.timestamp))
-                        .onTapGesture {
-                            recordToDelete = record
-                            showingDeleteConfirmation = true
-                        }
-                    }
-
-                    // 显示剩余数量
-                    if records.count > maxDisplayCount {
-                        Text("+\(records.count - maxDisplayCount)")
-                            .foregroundColor(.secondary)
-                            .font(.system(size: 12))
-                    }
+        VStack(alignment: .leading, spacing: 8) {
+            // 标题显示
+            HStack {
+                Text(dateString(from: date))
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                if !records.isEmpty {
+                    Text("\(records.count) 杯")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.secondary.opacity(0.1))
+                        .cornerRadius(8)
                 }
-                .padding(.vertical, 5)
             }
 
-            Spacer()
+            if records.isEmpty {
+                HStack {
+                    Spacer()
+                    Text("今日暂无记录")
+                        .foregroundColor(.secondary)
+                        .padding(.vertical, 12)
+                    Spacer()
+                }
+            } else {
+                // 记录列表
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(records.sorted(by: { $0.timestamp > $1.timestamp }), id: \.id) { record in
+                            VStack(spacing: 4) {
+                                Text(record.emoji)
+                                    .font(.system(size: 24))
+                                
+                                if record.quantity > 1 {
+                                    Text("x\(record.quantity)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Text(timeString(from: record.timestamp))
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(record.beverageType == .coffee ? 
+                                          Color.brown.opacity(0.1) : 
+                                          Color.purple.opacity(0.1))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(record.beverageType == .coffee ? 
+                                                   Color.brown.opacity(0.3) : 
+                                                   Color.purple.opacity(0.3), 
+                                                   lineWidth: 1)
+                                    )
+                            )
+                            .scaleEffect(recordToDelete?.id == record.id ? deleteScale : 1.0)
+                            .onTapGesture {
+                                recordToDelete = record
+                                showingDeleteConfirmation = true
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
         }
-        .padding(.top, 0)
+        .padding(.vertical, 8)
         .confirmationDialog("确定要删除这条记录吗？", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
             Button("删除", role: .destructive) {
                 if let record = recordToDelete {
-                    deleteRecord(record)
+                    withAnimation(.spring(response: 0.3)) {
+                        deleteScale = 0.5
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            deleteRecord(record)
+                            deleteScale = 1.0
+                        }
+                    }
                 }
             }
             Button("取消", role: .cancel) {}
@@ -442,30 +598,14 @@ struct DateDetailView: View {
             name: Notification.Name("DrinkRemoved"), object: nil)
     }
 
-    // 简化的摘要信息：周几 + 咖啡数量 + 奶茶数量
-    private var simplifiedSummary: String {
+    private func dateString(from date: Date) -> String {
         let weekday = weekdayString(from: date)
-
-        let coffeeCount = records.filter { $0.beverageType == .coffee }
-            .reduce(0) { $0 + $1.quantity }
-
-        let teaCount = records.filter { $0.beverageType == .tea }
-            .reduce(0) { $0 + $1.quantity }
-
-        var summary = weekday
-
-        if coffeeCount > 0 {
-            summary += "，咖啡\(coffeeCount)杯"
-        }
-
-        if teaCount > 0 {
-            summary += "，奶茶\(teaCount)杯"
-        }
-
-        return summary
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM月dd日"
+        let dateStr = formatter.string(from: date)
+        return "\(dateStr) \(weekday)"
     }
 
-    // 获取周几字符串
     private func weekdayString(from date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE"  // 完整的星期名称
@@ -480,24 +620,86 @@ struct DateDetailView: View {
     }
 }
 
-// 添加 CustomQuantityView 定义
 struct CustomQuantityView: View {
     @Binding var quantity: Int
+    let beverageType: BeverageType
     var onSave: () -> Void
+    var onCancel: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    var beverageEmoji: String {
+        return beverageType == .coffee ? "☕️" : "🧋"
+    }
+    
+    var beverageName: String {
+        return beverageType == .coffee ? "咖啡" : "奶茶"
+    }
+    
+    var beverageColor: Color {
+        return beverageType == .coffee ? .brown : .purple
+    }
 
     var body: some View {
-        VStack {
-            Text("输入数量").font(.headline)
+        VStack(spacing: 20) {
+            Text("\(beverageEmoji) 添加\(beverageName)")
+                .font(.headline)
+                .padding(.top, 20)
 
-            Stepper("\(quantity) 杯", value: $quantity, in: 1...10)
-                .padding()
-
-            Button("保存") {
-                onSave()
+            Text("请选择数量")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            HStack {
+                Button(action: {
+                    if quantity > 1 {
+                        quantity -= 1
+                    }
+                }) {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(quantity > 1 ? beverageColor : .gray)
+                }
+                
+                Text("\(quantity)")
+                    .font(.system(size: 36, weight: .bold))
+                    .frame(width: 60)
+                
+                Button(action: {
+                    if quantity < 10 {
+                        quantity += 1
+                    }
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(quantity < 10 ? beverageColor : .gray)
+                }
             }
-            .keyboardShortcut(.defaultAction)
+            .padding()
+            
+            HStack(spacing: 20) {
+                Button("取消") {
+                    onCancel()
+                }
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(Color.secondary.opacity(0.1))
+                .cornerRadius(10)
+                
+                Button("添加") {
+                    onSave()
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(beverageColor)
+                .cornerRadius(10)
+            }
+            .padding(.bottom, 20)
         }
-        .padding()
-        .frame(width: 200, height: 150)
+        .frame(width: 250)
+        .background(Color(.windowBackgroundColor))
+        .cornerRadius(16)
+        .shadow(radius: 10)
     }
 }
