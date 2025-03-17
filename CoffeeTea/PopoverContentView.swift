@@ -9,199 +9,300 @@ import SwiftData
 import SwiftUI
 import AppKit
 
+// 创建一个观察者类来处理通知
+class DateUpdateObserver: ObservableObject {
+    @Published var lastUpdateTime = Date()
+    
+    init() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateDate),
+            name: Notification.Name("UpdateCurrentDate"),
+            object: nil
+        )
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    @objc func updateDate() {
+        lastUpdateTime = Date()
+    }
+}
+
 struct PopoverContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var beverageRecords: [BeverageRecord]
-
-    @State private var selectedDate = Date()
-    @State private var currentMonth = Date()
+    
+    // 使用 StateObject 确保观察者的生命周期与视图一致
+    @StateObject private var dateObserver = DateUpdateObserver()
+    
+    // 使用计算属性获取当前日期
+    private var currentDate: Date {
+        // 每当 dateObserver.lastUpdateTime 更新时，这个属性会返回新的日期
+        return Date()
+    }
+    
+    @State private var selectedDate: Date = Date()
+    @State private var currentMonth: Date = Date()
     @State private var customQuantity: Int = 1
     @State private var showingCustomQuantityInput = false
     @State private var showingDateDetail = false
     @State private var detailDate: Date?
     @State private var addedAnimation: Bool = false
     @State private var selectedBeverageType: BeverageType?
+    @State private var showingDrinkWarning = false
+    @State private var warningType: BeverageType?
+    @State private var warningQuantity: Int = 1
+    @State private var warningMessage: String = ""
 
     var isFutureDate: Bool {
         return selectedDate > Date()
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 顶部标题栏 - 更紧凑
-            HStack {
-                Text("饮品记录")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.primary)
-                Spacer()
-                Button(action: {
-                    // 重置为今天
-                    selectedDate = Date()
-                    currentMonth = Date()
-                }) {
-                    Label("今天", systemImage: "calendar")
-                        .font(.system(size: 12))
-                        .foregroundColor(.blue)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 10)
-            .padding(.bottom, 6)
-            
-            Divider().padding(.vertical, 0)
-            
-            // 日历视图 - 更紧凑
-            ItsycalStyleCalendarView(
-                currentMonth: $currentMonth,
-                selectedDate: $selectedDate,
-                beverageRecords: beverageRecords,
-                onDateLongPress: { date in
-                    detailDate = date
-                    showingDateDetail = true
-                }
-            )
-            .padding(.horizontal, 6)
-            .padding(.vertical, 6)
-            
-            Divider().padding(.vertical, 0)
-            
-            // 日期详情视图 - 更紧凑
-            DateDetailView(
-                date: selectedDate, 
-                records: recordsForDate(selectedDate)
-            )
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            
-            Divider()
-            
-            // 底部快速添加按钮 - 更紧凑
-            HStack(spacing: 16) {
-                Spacer()
-                
-                Button(action: { 
-                    withAnimation {
-                        selectedBeverageType = .coffee
-                        addedAnimation = true
+        ZStack {
+            VStack(spacing: 0) {
+                // 顶部标题栏 - 更紧凑
+                HStack {
+                    Text("饮品记录")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Button(action: {
+                        // 重置为今天
+                        selectedDate = Date()
+                        currentMonth = Date()
+                    }) {
+                        Label("今天", systemImage: "calendar")
+                            .font(.system(size: 12))
+                            .foregroundColor(.blue)
                     }
-                    addRecord(type: .coffee)
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 10)
+                .padding(.bottom, 6)
+                
+                Divider().padding(.vertical, 0)
+                
+                // 日历视图 - 更紧凑
+                ItsycalStyleCalendarView(
+                    currentMonth: $currentMonth,
+                    selectedDate: $selectedDate,
+                    beverageRecords: beverageRecords,
+                    onDateLongPress: { date in
+                        detailDate = date
+                        showingDateDetail = true
+                    }
+                )
+                .padding(.horizontal, 6)
+                .padding(.vertical, 6)
+                
+                Divider().padding(.vertical, 0)
+                
+                // 日期详情视图 - 更紧凑
+                DateDetailView(
+                    date: selectedDate, 
+                    records: recordsForDate(selectedDate)
+                )
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                
+                Divider()
+                
+                // 底部快速添加按钮 - 更紧凑
+                HStack(spacing: 16) {
+                    Spacer()
                     
-                    // 重置动画状态
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    Button(action: { 
                         withAnimation {
-                            addedAnimation = false
+                            selectedBeverageType = .coffee
+                            addedAnimation = true
+                        }
+                        addRecord(type: .coffee)
+                        
+                        // 重置动画状态
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            withAnimation {
+                                addedAnimation = false
+                            }
+                        }
+                    }) {
+                        VStack(spacing: 2) {
+                            Image(systemName: "cup.and.saucer.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.brown)
+                            Text("咖啡")
+                                .font(.system(size: 10))
+                                .foregroundColor(.primary)
+                        }
+                        .frame(width: 60, height: 50)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.brown.opacity(0.1))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.brown.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                        .scaleEffect(selectedBeverageType == .coffee && addedAnimation ? 1.1 : 1.0)
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+                    .disabled(isFutureDate)
+                    .opacity(isFutureDate ? 0.5 : 1.0)
+                    .onLongPressGesture {
+                        if !isFutureDate {
+                            selectedBeverageType = .coffee
+                            showingCustomQuantityInput = true
                         }
                     }
-                }) {
-                    VStack(spacing: 2) {
-                        Image(systemName: "cup.and.saucer.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.brown)
-                        Text("咖啡")
-                            .font(.system(size: 10))
-                            .foregroundColor(.primary)
-                    }
-                    .frame(width: 60, height: 50)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.brown.opacity(0.1))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.brown.opacity(0.3), lineWidth: 1)
-                            )
-                    )
-                    .scaleEffect(selectedBeverageType == .coffee && addedAnimation ? 1.1 : 1.0)
-                }
-                .buttonStyle(.plain)
-                .contentShape(Rectangle())
-                .disabled(isFutureDate)
-                .opacity(isFutureDate ? 0.5 : 1.0)
-                .onLongPressGesture {
-                    if !isFutureDate {
-                        selectedBeverageType = .coffee
-                        showingCustomQuantityInput = true
-                    }
-                }
 
-                Button(action: { 
-                    withAnimation {
-                        selectedBeverageType = .tea
-                        addedAnimation = true
-                    }
-                    addRecord(type: .tea)
-                    
-                    // 重置动画状态
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    Button(action: { 
                         withAnimation {
-                            addedAnimation = false
+                            selectedBeverageType = .tea
+                            addedAnimation = true
+                        }
+                        addRecord(type: .tea)
+                        
+                        // 重置动画状态
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            withAnimation {
+                                addedAnimation = false
+                            }
+                        }
+                    }) {
+                        VStack(spacing: 2) {
+                            Image(systemName: "mug.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.purple)
+                            Text("奶茶")
+                                .font(.system(size: 10))
+                                .foregroundColor(.primary)
+                        }
+                        .frame(width: 60, height: 50)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.purple.opacity(0.1))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.purple.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                        .scaleEffect(selectedBeverageType == .tea && addedAnimation ? 1.1 : 1.0)
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+                    .disabled(isFutureDate)
+                    .opacity(isFutureDate ? 0.5 : 1.0)
+                    .onLongPressGesture {
+                        if !isFutureDate {
+                            selectedBeverageType = .tea
+                            showingCustomQuantityInput = true
                         }
                     }
-                }) {
-                    VStack(spacing: 2) {
-                        Image(systemName: "mug.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.purple)
-                        Text("奶茶")
-                            .font(.system(size: 10))
-                            .foregroundColor(.primary)
-                    }
-                    .frame(width: 60, height: 50)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.purple.opacity(0.1))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.purple.opacity(0.3), lineWidth: 1)
-                            )
-                    )
-                    .scaleEffect(selectedBeverageType == .tea && addedAnimation ? 1.1 : 1.0)
+                    
+                    Spacer()
                 }
-                .buttonStyle(.plain)
-                .contentShape(Rectangle())
-                .disabled(isFutureDate)
-                .opacity(isFutureDate ? 0.5 : 1.0)
-                .onLongPressGesture {
-                    if !isFutureDate {
-                        selectedBeverageType = .tea
-                        showingCustomQuantityInput = true
-                    }
-                }
-                
-                Spacer()
+                .padding(.vertical, 8)
+                .background(Color(nsColor: .windowBackgroundColor))
             }
-            .padding(.vertical, 8)
-            .background(Color(nsColor: .windowBackgroundColor))
-        }
-        .frame(width: 280) // 减小整体宽度
-        .background(Color(.textBackgroundColor))
-        .sheet(isPresented: $showingCustomQuantityInput) {
-            CustomQuantityView(
-                quantity: $customQuantity,
-                beverageType: selectedBeverageType ?? .coffee,
-                onSave: {
-                    if let type = selectedBeverageType {
-                        addRecord(type: type, quantity: customQuantity)
+            .frame(width: 280)
+            .background(Color(.textBackgroundColor))
+            .onChange(of: dateObserver.lastUpdateTime) {
+                selectedDate = currentDate
+                currentMonth = currentDate
+            }
+            .sheet(isPresented: $showingCustomQuantityInput) {
+                CustomQuantityView(
+                    quantity: $customQuantity,
+                    beverageType: selectedBeverageType ?? .coffee,
+                    onSave: {
+                        if let type = selectedBeverageType {
+                            addRecord(type: type, quantity: customQuantity)
+                        }
+                        showingCustomQuantityInput = false
+                        customQuantity = 1
+                    },
+                    onCancel: {
+                        showingCustomQuantityInput = false
+                        customQuantity = 1
                     }
-                    showingCustomQuantityInput = false
-                    customQuantity = 1
-                },
-                onCancel: {
-                    showingCustomQuantityInput = false
-                    customQuantity = 1
+                )
+            }
+            .sheet(isPresented: $showingDateDetail) {
+                if let date = detailDate {
+                    DateDetailView(date: date, records: recordsForDate(date))
+                        .presentationDetents([.medium])
                 }
-            )
-        }
-        .sheet(isPresented: $showingDateDetail) {
-            if let date = detailDate {
-                DateDetailView(date: date, records: recordsForDate(date))
-                    .presentationDetents([.medium])
+            }
+            .animation(.spring(response: 0.3), value: selectedDate)
+            .blur(radius: showingDrinkWarning ? 2 : 0)
+            .disabled(showingDrinkWarning)
+            
+            // 自定义警告视图
+            if showingDrinkWarning {
+                DrinkWarningView(
+                    message: warningMessage,
+                    type: warningType ?? .coffee,
+                    onDrink: {
+                        if let type = warningType {
+                            addDrinkRecord(type: type, quantity: warningQuantity)
+                        }
+                        showingDrinkWarning = false
+                    },
+                    onCancel: {
+                        showingDrinkWarning = false
+                    }
+                )
+                .transition(.scale.combined(with: .opacity))
             }
         }
-        .animation(.spring(response: 0.3), value: selectedDate)
     }
 
     private func addRecord(type: BeverageType, quantity: Int = 1) {
+        // 检查当天饮料数量
+        let today = Calendar.current.startOfDay(for: Date())
+        
+        let todayRecords = beverageRecords.filter { record in
+            let recordDate = Calendar.current.startOfDay(for: record.timestamp)
+            return recordDate == today
+        }
+        
+        let totalDrinks = todayRecords.reduce(0) { $0 + $1.quantity }
+        
+        if totalDrinks >= 2 {
+            // 已经喝了2杯或更多，显示提示
+            showDrinkWarning(type: type, quantity: quantity)
+        } else {
+            // 直接添加记录
+            addDrinkRecord(type: type, quantity: quantity)
+        }
+    }
+
+    private func showDrinkWarning(type: BeverageType, quantity: Int) {
+        // 随机选择一条诙谐提示语
+        let warningMessages = [
+            "今天的咖啡因已经超标啦！饮料好喝莫贪杯，不如来杯清水润润肺？",
+            "又来一杯？您的肾脏正在抗议：'主人，我已经很努力了！'",
+            "多喝热水，少喝甜饮，医生微笑，肾脏感谢！",
+            "今日糖分摄入已达小熊维尼级别，确定要继续吗？",
+            "您的身体正在组织一场名为'抗糖联盟'的集会，要不要考虑喝杯水？"
+        ]
+        
+        let randomIndex = Int.random(in: 0..<warningMessages.count)
+        warningMessage = warningMessages[randomIndex]
+        warningType = type
+        warningQuantity = quantity
+        
+        withAnimation(.spring(response: 0.3)) {
+            showingDrinkWarning = true
+        }
+    }
+
+    private func addDrinkRecord(type: BeverageType, quantity: Int) {
         let newRecord = BeverageRecord(timestamp: selectedDate, type: type, quantity: quantity)
         modelContext.insert(newRecord)
 
@@ -217,6 +318,73 @@ struct PopoverContentView: View {
         return beverageRecords.filter { record in
             record.timestamp >= startOfDay && record.timestamp < endOfDay
         }
+    }
+}
+
+// 自定义警告视图
+struct DrinkWarningView: View {
+    let message: String
+    let type: BeverageType
+    let onDrink: () -> Void
+    let onCancel: () -> Void
+    
+    var beverageEmoji: String {
+        return type == .coffee ? "☕️" : "🧋"
+    }
+    
+    var beverageColor: Color {
+        return type == .coffee ? .brown : .purple
+    }
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            // 图标
+            Image(systemName: "drop.fill")
+                .font(.system(size: 32))
+                .foregroundColor(.blue)
+                .padding(.top, 20)
+            
+            // 警告消息
+            Text(message)
+                .font(.system(size: 14))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 20)
+            
+            // 按钮
+            HStack(spacing: 16) {
+                Button(action: onCancel) {
+                    HStack {
+                        Image(systemName: "drop")
+                        Text("喝水去 💧")
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.blue.opacity(0.1))
+                    .foregroundColor(.blue)
+                    .cornerRadius(8)
+                }
+                
+                Button(action: onDrink) {
+                    HStack {
+                        Text("就要喝 \(beverageEmoji)")
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(beverageColor)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                }
+            }
+            .padding(.bottom, 20)
+        }
+        .frame(width: 240)
+        .background(Color(.windowBackgroundColor))
+        .cornerRadius(16)
+        .shadow(radius: 20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
     }
 }
 
