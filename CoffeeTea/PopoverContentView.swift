@@ -204,6 +204,50 @@ struct PopoverContentView: View {
                         }
                     }
                     
+                    Button(action: { 
+                        withAnimation {
+                            selectedBeverageType = .lemonTea
+                            addedAnimation = true
+                        }
+                        addRecord(type: .lemonTea)
+                        
+                        // 重置动画状态
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            withAnimation {
+                                addedAnimation = false
+                            }
+                        }
+                    }) {
+                        VStack(spacing: 2) {
+                            Image(systemName: "cup.and.saucer")
+                                .font(.system(size: 20))
+                                .foregroundColor(.yellow)
+                            Text("柠檬茶")
+                                .font(.system(size: 10))
+                                .foregroundColor(.primary)
+                        }
+                        .frame(width: 60, height: 50)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.yellow.opacity(0.1))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                        .scaleEffect(selectedBeverageType == .lemonTea && addedAnimation ? 1.1 : 1.0)
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+                    .disabled(isFutureDate)
+                    .opacity(isFutureDate ? 0.5 : 1.0)
+                    .onLongPressGesture {
+                        if !isFutureDate {
+                            selectedBeverageType = .lemonTea
+                            showingCustomQuantityInput = true
+                        }
+                    }
+                    
                     Spacer()
                 }
                 .padding(.vertical, 8)
@@ -329,11 +373,25 @@ struct DrinkWarningView: View {
     let onCancel: () -> Void
     
     var beverageEmoji: String {
-        return type == .coffee ? "☕️" : "🧋"
+        switch type {
+        case .coffee:
+            return "☕️"
+        case .tea:
+            return "🧋"
+        case .lemonTea:
+            return "🍋"
+        }
     }
     
     var beverageColor: Color {
-        return type == .coffee ? .brown : .purple
+        switch type {
+        case .coffee:
+            return .brown
+        case .tea:
+            return .purple
+        case .lemonTea:
+            return .yellow
+        }
     }
     
     var body: some View {
@@ -355,7 +413,7 @@ struct DrinkWarningView: View {
                 Button(action: onCancel) {
                     HStack {
                         Image(systemName: "drop")
-                        Text("喝水去 💧")
+                        Text("喝水去")
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
@@ -366,7 +424,7 @@ struct DrinkWarningView: View {
                 
                 Button(action: onDrink) {
                     HStack {
-                        Text("就要喝 \(beverageEmoji)")
+                        Text("就要喝")
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
@@ -800,15 +858,36 @@ struct CustomQuantityView: View {
     @Environment(\.dismiss) private var dismiss
     
     var beverageEmoji: String {
-        return beverageType == .coffee ? "☕️" : "🧋"
+        switch beverageType {
+        case .coffee:
+            return "☕️"
+        case .tea:
+            return "🧋"
+        case .lemonTea:
+            return "🍋"
+        }
     }
     
     var beverageName: String {
-        return beverageType == .coffee ? "咖啡" : "奶茶"
+        switch beverageType {
+        case .coffee:
+            return "咖啡"
+        case .tea:
+            return "奶茶"
+        case .lemonTea:
+            return "柠檬茶"
+        }
     }
     
     var beverageColor: Color {
-        return beverageType == .coffee ? .brown : .purple
+        switch beverageType {
+        case .coffee:
+            return .brown
+        case .tea:
+            return .purple
+        case .lemonTea:
+            return .yellow
+        }
     }
 
     var body: some View {

@@ -4,12 +4,13 @@ import SwiftData
 enum BeverageType: String, Codable {
     case coffee = "coffee"
     case tea = "tea"
+    case lemonTea = "lemonTea"
 }
 
 @Model
 final class BeverageRecord {
     var timestamp: Date
-    var type: String // "coffee" 或 "tea"
+    var type: String // "coffee"、"tea"或"lemonTea"
     var quantity: Int
     
     init(timestamp: Date, type: BeverageType, quantity: Int = 1) {
@@ -23,6 +24,13 @@ final class BeverageRecord {
     }
     
     var emoji: String {
-        return beverageType == .coffee ? "☕️" : "🧋"
+        switch beverageType {
+        case .coffee:
+            return "☕️"
+        case .tea:
+            return "🧋"
+        case .lemonTea:
+            return "🍋"
+        }
     }
 } 
