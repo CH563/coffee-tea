@@ -28,6 +28,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
+    // MARK: - 设置方法
+    
     private func setupModelContext() {
         let schema = Schema([BeverageRecord.self])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
@@ -66,8 +68,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         popover.contentSize = NSSize(width: 280, height: 400)
         popover.behavior = .transient
         
-        // 设置背景色 - 修复错误
-        popover.appearance = NSAppearance(named: .aqua) // 使用系统默认外观
+        // 设置背景色
+        popover.appearance = NSAppearance(named: .aqua)
         
         // 创建 SwiftUI 视图并传入 ModelContext
         let contentView = PopoverContentView()
@@ -81,10 +83,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleDrinkAdded),
-            name: Notification.Name("DrinkAdded"),
+            name: Notification.Name.drinkAdded,
             object: nil
         )
     }
+    
+    // MARK: - 事件处理
     
     @objc func togglePopover(_ sender: NSStatusBarButton) {
         let event = NSApp.currentEvent
@@ -115,11 +119,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         animateStatusBarIcon()
     }
     
+    // MARK: - 菜单和工具方法
+    
     private func showContextMenu() {
         let menu = NSMenu()
         
         menu.addItem(NSMenuItem(title: "快速记录咖啡", action: #selector(quickAddCoffee), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "快速记录奶茶", action: #selector(quickAddTea), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "快速记录柠檬茶", action: #selector(quickAddLemonTea), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "今日消费", action: #selector(showTodayConsumptionFromMenu), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
@@ -153,13 +160,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let todayRecords = try modelContext.fetch(descriptor)
             let coffeeCount = todayRecords.filter { $0.beverageType == .coffee }.reduce(0) { $0 + $1.quantity }
             let teaCount = todayRecords.filter { $0.beverageType == .tea }.reduce(0) { $0 + $1.quantity }
+            let lemonTeaCount = todayRecords.filter { $0.beverageType == .lemonTea }.reduce(0) { $0 + $1.quantity }
             
             // 显示今日消费
-            let message = "今日：\(coffeeCount) 咖啡 \(teaCount) 奶茶"
+            var message = ""
+            if coffeeCount > 0 {
+                message += "\(coffeeCount) ☕️ "
+            }
+            if teaCount > 0 {
+                message += "\(teaCount) 🧋"
+            }
+            if lemonTeaCount > 0 {
+                message += "\(lemonTeaCount) 🍋"
+            }
+            
+            if coffeeCount == 0 && teaCount == 0 && lemonTeaCount == 0 {
+                message += "暂无记录"
+            }
             
             if statusBarItem.button != nil {
                 let alert = NSAlert()
-                alert.messageText = message
+                alert.messageText = "今日饮料"
+                alert.informativeText = message
                 alert.addButton(withTitle: "确定")
                 alert.runModal()
             }
@@ -171,18 +193,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func animateStatusBarIcon() {
         guard let button = statusBarItem.button else { return }
         
-        // 保存原始位置
-        let originalFrame = button.frame
-        
         // 创建晃动动画
         let animation = CAKeyframeAnimation(keyPath: "position.x")
         animation.values = [
-            originalFrame.origin.x,                  // 原始位置
-            originalFrame.origin.x - 3,              // 左移3点
-            originalFrame.origin.x + 3,              // 右移3点
-            originalFrame.origin.x - 2,              // 左移2点
-            originalFrame.origin.x + 2,              // 右移2点
-            originalFrame.origin.x                   // 回到原始位置
+            button.frame.origin.x,     // 原始位置
+            button.frame.origin.x - 3, // 左移3点
+            button.frame.origin.x + 3, // 右移3点
+            button.frame.origin.x - 2, // 左移2点
+            button.frame.origin.x + 2, // 右移2点
+            button.frame.origin.x      // 回到原始位置
         ]
         animation.keyTimes = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
         animation.duration = 0.5
@@ -192,12 +211,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         button.layer?.add(animation, forKey: "shake")
     }
     
+    // MARK: - 快速添加饮料
+    
     @objc func quickAddCoffee() {
-        addQuickDrink(type: BeverageType.coffee)
+        addQuickDrink(type: .coffee)
     }
     
     @objc func quickAddTea() {
-        addQuickDrink(type: BeverageType.tea)
+        addQuickDrink(type: .tea)
+    }
+
+    @objc func quickAddLemonTea() {
+        addQuickDrink(type: .lemonTea)
     }
     
     private func addQuickDrink(type: BeverageType) {
@@ -243,14 +268,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         let randomIndex = Int.random(in: 0..<warningMessages.count)
         alert.messageText = warningMessages[randomIndex]
-        alert.icon = NSImage(systemSymbolName: "drop.fill", accessibilityDescription: nil)
+        
+        // 设置图标为水滴表情符号
+        let emojiAttributes = [NSAttributedString.Key.font: NSFont.systemFont(ofSize: 24)]
+        let emoji = NSAttributedString(string: "💧", attributes: emojiAttributes)
+        
+        let emojiImage = NSImage(size: NSSize(width: 30, height: 30))
+        emojiImage.lockFocus()
+        emoji.draw(at: NSPoint(x: 3, y: 3))
+        emojiImage.unlockFocus()
+        
+        alert.icon = emojiImage
         
         // 添加两个按钮
-        let drinkButton = alert.addButton(withTitle: "就要喝 ☕️")
-        _ = alert.addButton(withTitle: "喝水去 💧")
+        let button1 = alert.addButton(withTitle: "就要喝 \(type.emoji)")
+        button1.font = NSFont.systemFont(ofSize: 12)
         
-        // 设置按钮样式
-        drinkButton.hasDestructiveAction = true
+        // 设置按钮为蓝底白字
+        if let cell = button1.cell as? NSButtonCell {
+            cell.backgroundColor = NSColor.systemBlue
+            button1.contentTintColor = NSColor.white
+        }
+        
+        let button2 = alert.addButton(withTitle: "喝水去 💧")
+        button2.font = NSFont.systemFont(ofSize: 12)
         
         // 显示警告并处理结果
         let response = alert.runModal()
@@ -274,16 +315,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     // 添加更新日期的方法
     private func updateCurrentDate() {
-        // 获取 PopoverContentView 实例
-        if popover.contentViewController is NSHostingController<PopoverContentView> {
-            // 直接发送通知，不需要类型转换
-            DispatchQueue.main.async {
-                // 通过通知中心发送更新日期的通知
-                NotificationCenter.default.post(
-                    name: Notification.Name("UpdateCurrentDate"),
-                    object: nil
-                )
-            }
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: Notification.Name.updateCurrentDate,
+                object: nil
+            )
         }
     }
 }
