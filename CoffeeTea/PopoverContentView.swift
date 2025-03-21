@@ -86,7 +86,7 @@ struct PopoverContentView: View {
                 Divider()
                 
                 // 底部快速添加按钮
-                HStack(spacing: 16) {
+                HStack(spacing: 12) {
                     Spacer()
                     
                     // 咖啡按钮
@@ -105,6 +105,12 @@ struct PopoverContentView: View {
                     createBeverageButton(
                         type: .lemonTea,
                         action: { addRecord(type: .lemonTea) }
+                    )
+                    
+                    // 瓶装饮料按钮
+                    createBeverageButton(
+                        type: .bottled,
+                        action: { addRecord(type: .bottled) }
                     )
                     
                     Spacer()
@@ -183,13 +189,13 @@ struct PopoverContentView: View {
         }) {
             VStack(spacing: 2) {
                 Image(systemName: type.iconName)
-                    .font(.system(size: 20))
+                    .font(.system(size: 16))
                     .foregroundColor(type.themeColor)
                 Text(type.displayName)
                     .font(.system(size: 10))
                     .foregroundColor(.primary)
             }
-            .frame(width: 60, height: 50)
+            .frame(width: 48, height: 48)
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(type.themeColor.opacity(0.1))
@@ -241,7 +247,8 @@ struct PopoverContentView: View {
             "又来一杯？您的肾脏正在抗议：'主人，我已经很努力了！'",
             "多喝热水，少喝甜饮，医生微笑，肾脏感谢！",
             "今日糖分摄入已达小熊维尼级别，确定要继续吗？",
-            "您的身体正在组织一场名为'抗糖联盟'的集会，要不要考虑喝杯水？"
+            "您的身体正在组织一场名为'抗糖联盟'的集会，要不要考虑喝杯水？",
+            "瓶装饮料虽方便，但塑料瓶对环境不太友好哦，考虑下可重复使用的杯子？"
         ]
         
         let randomIndex = Int.random(in: 0..<warningMessages.count)

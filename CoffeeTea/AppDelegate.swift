@@ -13,6 +13,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var statusBarItem: NSStatusItem!
     var popover = NSPopover()
     var modelContext: ModelContext!
+    var dailyCheckTimer: Timer?  // 新增：每日检查定时器
+    var originalIcon: NSImage?   // 新增：保存原始图标
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 隐藏主窗口
@@ -26,6 +28,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApplication.shared.windows.forEach { window in
             window.contentView?.wantsLayer = true
         }
+        
+        // 应用启动时检查今天是否已经有饮料记录
+        checkTodayDrinkRecords()
+        
+        // 设置每日凌晨检查定时器
+        setupDailyCheckTimer()
     }
     
     // MARK: - 设置方法
@@ -50,6 +58,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // 设置图标
             let icon = NSImage(named: "StatusBarIcon") ?? NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: "Coffee Tea")!
             icon.size = NSSize(width: 18, height: 18)
+            originalIcon = icon.copy() as? NSImage  // 保存原始图标
             button.image = icon
             
             // 点击事件
@@ -86,6 +95,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             name: Notification.Name.drinkAdded,
             object: nil
         )
+        
+        // 监听饮品移除事件
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(checkTodayDrinkRecords),
+            name: Notification.Name.drinkRemoved,
+            object: nil
+        )
     }
     
     // MARK: - 事件处理
@@ -117,6 +134,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func handleDrinkAdded() {
         // 添加成功动画：图标旋转
         animateStatusBarIcon()
+        
+        // 设置状态栏图标倾斜
+        tiltStatusBarIcon()
     }
     
     // MARK: - 菜单和工具方法
@@ -127,6 +147,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "快速记录咖啡", action: #selector(quickAddCoffee), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "快速记录奶茶", action: #selector(quickAddTea), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "快速记录柠檬茶", action: #selector(quickAddLemonTea), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "快速记录三得利", action: #selector(quickAddBottled), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "今日消费", action: #selector(showTodayConsumptionFromMenu), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
@@ -161,6 +182,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let coffeeCount = todayRecords.filter { $0.beverageType == .coffee }.reduce(0) { $0 + $1.quantity }
             let teaCount = todayRecords.filter { $0.beverageType == .tea }.reduce(0) { $0 + $1.quantity }
             let lemonTeaCount = todayRecords.filter { $0.beverageType == .lemonTea }.reduce(0) { $0 + $1.quantity }
+            let bottledCount = todayRecords.filter { $0.beverageType == .bottled }.reduce(0) { $0 + $1.quantity }
             
             // 显示今日消费
             var message = ""
@@ -168,13 +190,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 message += "\(coffeeCount) ☕️ "
             }
             if teaCount > 0 {
-                message += "\(teaCount) 🧋"
+                message += "\(teaCount) 🧋 "
             }
             if lemonTeaCount > 0 {
-                message += "\(lemonTeaCount) 🍋"
+                message += "\(lemonTeaCount) 🍋 "
+            }
+            if bottledCount > 0 {
+                message += "\(bottledCount) 🥤 "
             }
             
-            if coffeeCount == 0 && teaCount == 0 && lemonTeaCount == 0 {
+            if coffeeCount == 0 && teaCount == 0 && lemonTeaCount == 0 && bottledCount == 0 {
                 message += "暂无记录"
             }
             
@@ -225,6 +250,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         addQuickDrink(type: .lemonTea)
     }
     
+    @objc func quickAddBottled() {
+        addQuickDrink(type: .bottled)
+    }
+    
     private func addQuickDrink(type: BeverageType) {
         // 检查当天饮料数量
         let today = Calendar.current.startOfDay(for: Date())
@@ -263,7 +292,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             "又来一杯？您的肾脏正在抗议：'主人，我已经很努力了！'",
             "多喝热水，少喝甜饮，医生微笑，肾脏感谢！",
             "今日糖分摄入已达小熊维尼级别，确定要继续吗？",
-            "您的身体正在组织一场名为'抗糖联盟'的集会，要不要考虑喝杯水？"
+            "您的身体正在组织一场名为'抗糖联盟'的集会，要不要考虑喝杯水？",
+            "瓶装饮料虽方便，但塑料瓶对环境不太友好哦，考虑下可重复使用的杯子？"
         ]
         
         let randomIndex = Int.random(in: 0..<warningMessages.count)
@@ -320,6 +350,74 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 name: Notification.Name.updateCurrentDate,
                 object: nil
             )
+        }
+    }
+    
+    // 新增：设置每日检查定时器，在凌晨重置图标
+    private func setupDailyCheckTimer() {
+        // 计算到下一个凌晨的时间
+        let now = Date()
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day], from: now)
+        components.day = (components.day ?? 0) + 1
+        components.hour = 0
+        components.minute = 0
+        components.second = 1
+        
+        guard let nextMidnight = calendar.date(from: components) else { return }
+        
+        // 创建定时器，每天凌晨触发
+        dailyCheckTimer = Timer.scheduledTimer(
+            withTimeInterval: nextMidnight.timeIntervalSince(now),
+            repeats: false
+        ) { [weak self] _ in
+            self?.resetStatusBarIcon()
+            // 重新设置下一天的定时器
+            self?.setupDailyCheckTimer()
+        }
+    }
+    
+    // 新增：倾斜状态栏图标
+    private func tiltStatusBarIcon() {
+        guard let button = statusBarItem.button, let icon = button.image else { return }
+        
+        // 创建倾斜45度的图标
+        let tiltedIcon = icon.copy() as! NSImage
+        tiltedIcon.rotate(byDegrees: 45)
+        
+        // 设置倾斜的图标
+        button.image = tiltedIcon
+    }
+    
+    // 新增：重置状态栏图标为正常状态
+    private func resetStatusBarIcon() {
+        guard let button = statusBarItem.button, let originalIcon = self.originalIcon else { return }
+        button.image = originalIcon.copy() as? NSImage
+    }
+    
+    // 新增：检查今天是否有饮料记录，有则倾斜图标，无则重置图标
+    @objc func checkTodayDrinkRecords() {
+        // 获取今日记录
+        let today = Calendar.current.startOfDay(for: Date())
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+        
+        let predicate = #Predicate<BeverageRecord> { record in
+            record.timestamp >= today && record.timestamp < tomorrow
+        }
+        
+        let descriptor = FetchDescriptor<BeverageRecord>(predicate: predicate)
+        
+        do {
+            let todayRecords = try modelContext.fetch(descriptor)
+            if todayRecords.isEmpty {
+                // 今天没有记录，重置图标
+                resetStatusBarIcon()
+            } else {
+                // 今天有记录，倾斜图标
+                tiltStatusBarIcon()
+            }
+        } catch {
+            print("检查今日饮料记录失败: \(error)")
         }
     }
 }

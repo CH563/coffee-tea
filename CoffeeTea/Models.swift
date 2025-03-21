@@ -7,6 +7,7 @@ enum BeverageType: String, Codable {
     case coffee = "coffee"
     case tea = "tea"
     case lemonTea = "lemonTea"
+    case bottled = "bottled"
     
     var displayName: String {
         switch self {
@@ -16,6 +17,8 @@ enum BeverageType: String, Codable {
             return "奶茶" 
         case .lemonTea:
             return "柠檬茶"
+        case .bottled:
+            return "三得利"
         }
     }
     
@@ -27,6 +30,8 @@ enum BeverageType: String, Codable {
             return "mug.fill"
         case .lemonTea:
             return "cup.and.saucer"
+        case .bottled:
+            return "waterbottle.fill"
         }
     }
     
@@ -38,6 +43,8 @@ enum BeverageType: String, Codable {
             return .purple
         case .lemonTea:
             return .yellow
+        case .bottled:
+            return .blue
         }
     }
     
@@ -49,6 +56,8 @@ enum BeverageType: String, Codable {
             return "🧋"
         case .lemonTea:
             return "🍋"
+        case .bottled:
+            return "🥤"
         }
     }
 }
@@ -77,6 +86,8 @@ final class BeverageRecord {
             return "🧋"
         case .lemonTea:
             return "🍋"
+        case .bottled:
+            return "🥤"
         }
     }
 } 
