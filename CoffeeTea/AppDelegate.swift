@@ -16,6 +16,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var dailyCheckTimer: Timer?  // 新增：每日检查定时器
     var originalIcon: NSImage?   // 新增：保存原始图标
     
+    // 保持对统计视图窗口控制器的强引用
+    private var statisticsWindowController: NSWindowController?
+    
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 隐藏主窗口
         NSApp.setActivationPolicy(.accessory)
@@ -127,7 +130,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc func handleLongPress(_ gestureRecognizer: NSPressGestureRecognizer) {
         if gestureRecognizer.state == .began {
-            showTodayConsumption()
+            showStatisticsView()
         }
     }
     
@@ -149,7 +152,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "快速记录柠檬茶", action: #selector(quickAddLemonTea), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "快速记录三得利", action: #selector(quickAddBottled), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "今日消费", action: #selector(showTodayConsumptionFromMenu), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "饮料统计", action: #selector(showTodayConsumptionFromMenu), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         
@@ -163,56 +166,45 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc func showTodayConsumptionFromMenu() {
-        showTodayConsumption()
+        showStatisticsView()
     }
     
-    private func showTodayConsumption() {
-        // 获取今日消费数据
-        let today = Calendar.current.startOfDay(for: Date())
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
-        
-        let predicate = #Predicate<BeverageRecord> { record in
-            record.timestamp >= today && record.timestamp < tomorrow
+    private func showStatisticsView() {
+        // 如果窗口控制器已经存在，则将其窗口前置显示
+        if let windowController = statisticsWindowController {
+            windowController.window?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
         }
         
-        let descriptor = FetchDescriptor<BeverageRecord>(predicate: predicate)
+        // 创建统计视图窗口
+        let statisticsView = StatisticsView()
+            .environment(\.modelContext, modelContext)
         
-        do {
-            let todayRecords = try modelContext.fetch(descriptor)
-            let coffeeCount = todayRecords.filter { $0.beverageType == .coffee }.reduce(0) { $0 + $1.quantity }
-            let teaCount = todayRecords.filter { $0.beverageType == .tea }.reduce(0) { $0 + $1.quantity }
-            let lemonTeaCount = todayRecords.filter { $0.beverageType == .lemonTea }.reduce(0) { $0 + $1.quantity }
-            let bottledCount = todayRecords.filter { $0.beverageType == .bottled }.reduce(0) { $0 + $1.quantity }
-            
-            // 显示今日消费
-            var message = ""
-            if coffeeCount > 0 {
-                message += "\(coffeeCount) ☕️ "
-            }
-            if teaCount > 0 {
-                message += "\(teaCount) 🧋 "
-            }
-            if lemonTeaCount > 0 {
-                message += "\(lemonTeaCount) 🍋 "
-            }
-            if bottledCount > 0 {
-                message += "\(bottledCount) 🥤 "
-            }
-            
-            if coffeeCount == 0 && teaCount == 0 && lemonTeaCount == 0 && bottledCount == 0 {
-                message += "暂无记录"
-            }
-            
-            if statusBarItem.button != nil {
-                let alert = NSAlert()
-                alert.messageText = "今日饮料"
-                alert.informativeText = message
-                alert.addButton(withTitle: "确定")
-                alert.runModal()
-            }
-        } catch {
-            print("获取今日消费数据失败: \(error)")
-        }
+        let hostingController = NSHostingController(rootView: statisticsView)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 500),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        
+        window.title = "饮料统计"
+        window.center()
+        window.contentViewController = hostingController
+        
+        // 创建窗口控制器
+        let windowController = NSWindowController(window: window)
+        windowController.shouldCascadeWindows = true
+        
+        // 保存窗口控制器的引用
+        statisticsWindowController = windowController
+        
+        // 设置窗口关闭时的回调
+        window.delegate = self
+        
+        windowController.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
     
     private func animateStatusBarIcon() {
@@ -437,5 +429,17 @@ extension NSImage {
         self.lockFocus()
         rotatedImage.draw(in: imageRect, from: .zero, operation: .copy, fraction: 1.0)
         self.unlockFocus()
+    }
+}
+
+// MARK: - NSWindowDelegate
+extension AppDelegate: NSWindowDelegate {
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        
+        // 如果是统计视图窗口，则清除窗口控制器引用
+        if window === statisticsWindowController?.window {
+            statisticsWindowController = nil
+        }
     }
 }
